@@ -336,11 +336,15 @@ const init = ()=>{
                 btnDelete.classList.add('redWarningBG');
                 btnDelete.classList.add('fa-solid', 'fa-trash-can');
                 btnDelete.title = 'Delete the current preset';
-                btnDelete.addEventListener('click', ()=>{
-                    settings.presetList.splice(settings.presetList.indexOf(settings.preset), 1);
-                    settings.presetName = '';
-                    updateSelect();
-                    saveSettingsDebounced();
+                btnDelete.addEventListener('click', async()=>{
+                    if (settings.presetName == '') return;
+                    const confirmed = await callPopup(`<h3>Delete World Info Preset "${settings.presetName}"?</h3>`, 'confirm');
+                    if (confirmed) {
+                        settings.presetList.splice(settings.presetList.indexOf(settings.preset), 1);
+                        settings.presetName = '';
+                        updateSelect();
+                        saveSettingsDebounced();
+                    }
                 });
                 actions.append(btnDelete);
             }
