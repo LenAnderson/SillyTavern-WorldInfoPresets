@@ -1,0 +1,13 @@
+.stwip--container {
+	flex-basis: 100%;
+	display: flex;
+	flex-direction: row;
+	gap: 1em;
+	align-items: baseline;
+
+	> .stwip--actions {
+		display: flex;
+		flex-direction: row;
+		gap: 0.25em;
+	}
+}
