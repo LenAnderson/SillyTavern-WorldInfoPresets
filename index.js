@@ -1,5 +1,6 @@
 import { callPopup, getRequestHeaders, saveSettingsDebounced } from '../../../../script.js';
 import { extension_settings } from '../../../extensions.js';
+import { POPUP_RESULT, POPUP_TYPE, Popup } from '../../../popup.js';
 import { executeSlashCommands, registerSlashCommand } from '../../../slash-commands.js';
 import { importWorldInfo, world_info } from '../../../world-info.js';
 
@@ -352,6 +353,54 @@ const init = ()=>{
         }
         container.children[0].insertAdjacentElement('beforebegin', dom);
     }
+
+    const sel = document.querySelector('#world_editor_select');
+    let bookNames = Array.from(sel.children).map(it=>it.textContent);
+    const mo = new MutationObserver(async(muts)=>{
+        console.log('[WIP]', '[BOOKS CHANGED]', muts);
+        const newNames = Array.from(sel.children).map(it=>it.textContent);
+        const added = [];
+        const removed = [];
+        for (const nn of newNames) {
+            if (!bookNames.includes(nn)) added.push(nn);
+        }
+        for (const bn of bookNames) {
+            if (!newNames.includes(bn)) removed.push(bn);
+        }
+        if (added.length == 1 && removed.length == 1) {
+            const oldName = removed[0];
+            const newName = added[0];
+            const presets = settings.presetList.filter(preset=>preset.worldList.includes(oldName));
+            if (presets.length > 0) {
+                // oldName has probably been renamed to newName
+                const popupText = `
+                    <div style="text-align:left;">
+                        <h3>World Info Renamed</h3>
+                        <p>It looks like you renamed the World Info book "${oldName}" to "${newName}".</p>
+                        <p>The following presets currently include the World Info book "${oldName}":</p>
+                        <ul>
+                            ${presets.map(it=>`<li>${it.name}</li>`).join('')}
+                        </ul>
+                        <p>
+                            Do you want to update all ${presets.length} presets that include "<strong>${oldName}</strong>" to now include "<strong>${newName}</strong>" instead?
+                        </p>
+                    </div>
+                `;
+                const dlg = new Popup(popupText, POPUP_TYPE.CONFIRM);
+                await dlg.show();
+                if (dlg.result == POPUP_RESULT.AFFIRMATIVE) {
+                    for (const preset of presets) {
+                        preset.worldList.splice(preset.worldList.indexOf(oldName), 1, newName);
+                    }
+                    saveSettingsDebounced();
+                }
+            } else {
+                // toastr.info(`World Info book renamed, but not included in any presets: "${oldName}" => "${newName}"`);
+            }
+        }
+        bookNames = [...newNames];
+    });
+    mo.observe(sel, { childList: true });
 };
 init();
 
