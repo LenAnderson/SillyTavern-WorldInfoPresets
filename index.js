@@ -1,4 +1,4 @@
-import { callPopup, getRequestHeaders, saveSettingsDebounced } from '../../../../script.js';
+import { callPopup, eventSource, event_types, getRequestHeaders, saveSettingsDebounced } from '../../../../script.js';
 import { extension_settings } from '../../../extensions.js';
 import { POPUP_RESULT, POPUP_TYPE, Popup } from '../../../popup.js';
 import { executeSlashCommands, registerSlashCommand } from '../../../slash-commands.js';
@@ -415,3 +415,111 @@ registerSlashCommand('wipreset',
     true,
     true,
 );
+
+
+
+
+const initTransfer = ()=>{
+    const alterTemplate = ()=>{
+        const tpl = document.querySelector('#entry_edit_template');
+        const transferBtn = document.createElement('i'); {
+            transferBtn.classList.add('stwip--transfer');
+            transferBtn.classList.add('menu_button');
+            transferBtn.classList.add('fa-solid');
+            transferBtn.classList.add('fa-truck-arrow-right');
+            transferBtn.title = 'Transfer world info entry into another book';
+            tpl.querySelector('.duplicate_entry_button').insertAdjacentElement('beforebegin', transferBtn);
+        }
+    };
+    alterTemplate();
+
+
+    const mo = new MutationObserver(muts=>{
+        for (const entry of [...document.querySelectorAll('#world_popup_entries_list .world_entry:not(.stwip--)')]) {
+            const uid = entry.getAttribute('uid');
+            entry.classList.add('stwip--');
+            const transferBtn = entry.querySelector('.stwip--transfer');
+            transferBtn.addEventListener('click', async(evt)=>{
+                evt.stopPropagation();
+                let sel;
+                const dom = document.createElement('div'); {
+                    const title = document.createElement('h3'); {
+                        title.textContent = 'Transfer World Info Entry';
+                        dom.append(title);
+                    }
+                    const subTitle = document.createElement('h3'); {
+                        subTitle.textContent = transferBtn.closest('.world_entry').querySelector('[name="comment"]').value ?? transferBtn.closest('.world_entry').querySelector('[name="key"]').value;
+                        dom.append(subTitle);
+                    }
+                    sel = document.querySelector('#world_editor_select').cloneNode(true); {
+                        sel.value = document.querySelector('#world_editor_select').value;
+                        sel.addEventListener('keydown', (evt)=>{
+                            if (!evt.ctrlKey && !evt.shiftKey && !evt.altKey && evt.key == 'Enter') {
+                                evt.preventDefault();
+                                dlg.completeAffirmative();
+                            }
+                        });
+                        dom.append(sel);
+                    }
+                }
+                const dlg = new Popup(dom, POPUP_TYPE.CONFIRM, null, { okButton:'Transfer', cancelButton:'Cancel' });
+                dlg.show();
+                sel.focus();
+                await dlg.promise;
+                if (dlg.result == POPUP_RESULT.AFFIRMATIVE) {
+                    toastr.info('Transferring WI Entry');
+                    console.log('TRANSFER TO', sel.value);
+                    const srcName = document.querySelector('#world_editor_select').selectedOptions[0].textContent;
+                    const dstName = sel.selectedOptions[0].textContent;
+                    if (srcName == dstName) {
+                        toastr.warning(`Entry is already in book "${dstName}"`);
+                        return;
+                    }
+                    const [srcBook, dstBook] = await Promise.all([
+                        loadBook(srcName),
+                        loadBook(dstName),
+                    ]);
+                    if (srcBook && dstBook) {
+                        const maxUid = Math.max(...Object.keys(dstBook.entries).map(Number));
+                        const e = srcBook.entries[uid];
+                        e.uid = maxUid + 1;
+                        dstBook.entries[e.uid] = e;
+                        srcBook.entries[uid] = undefined;
+                        await Promise.all([
+                            saveBook(srcName, srcBook),
+                            saveBook(dstName, dstBook),
+                        ]);
+                        document.querySelector('#world_editor_select').value = '';
+                        document.querySelector('#world_editor_select').dispatchEvent(new Event('change', {  bubbles:true }));
+                        toastr.success('Transferred WI Entry');
+                    } else {
+                        toastr.error('Something went wrong');
+                    }
+                }
+            });
+        }
+    });
+    mo.observe(document.querySelector('#world_popup_entries_list'), { childList:true, subtree:true });
+
+    const loadBook = async(name)=>{
+        const result = await fetch('/api/worldinfo/get', {
+            method: 'POST',
+            headers: getRequestHeaders(),
+            body: JSON.stringify({ name }),
+        });
+        if (result.ok) {
+            return await result.json();
+        } else {
+            toastr.warning(`Failed to load World Info book: ${name}`);
+        }
+    };
+    const saveBook = async(name, data)=>{
+        await fetch('/api/worldinfo/edit', {
+            method: 'POST',
+            headers: getRequestHeaders(),
+            body: JSON.stringify({ name, data }),
+        });
+        eventSource.emit(event_types.WORLDINFO_UPDATED, name, data);
+    };
+};
+initTransfer();
