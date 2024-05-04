@@ -480,7 +480,7 @@ const initTransfer = ()=>{
                         loadBook(dstName),
                     ]);
                     if (srcBook && dstBook) {
-                        const maxUid = Math.max(...Object.keys(dstBook.entries).map(Number));
+                        const maxUid = Math.max(0, ...Object.keys(dstBook.entries).map(Number));
                         const e = srcBook.entries[uid];
                         e.uid = maxUid + 1;
                         dstBook.entries[e.uid] = e;
