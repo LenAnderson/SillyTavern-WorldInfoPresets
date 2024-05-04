@@ -11,3 +11,52 @@
 		gap: 0.25em;
 	}
 }
+
+.shadow_popup:has(.stwip--transferModal) {
+	.dialogue_popup_ok {
+		&:after {
+			content: 'Transfer';
+			height: 0;
+			overflow: hidden;
+			font-weight: bold;
+		}
+		display: flex;
+		align-items: center;
+		flex-direction: column;
+		white-space: pre;
+		font-weight: normal;
+		box-shadow: 0 0 0;
+		transition: 200ms;
+	}
+	.stwip--copy {
+		&:after {
+			content: 'Copy';
+			height: 0;
+			overflow: hidden;
+			font-weight: bold;
+		}
+		display: flex;
+		align-items: center;
+		flex-direction: column;
+		white-space: pre;
+		font-weight: normal;
+		box-shadow: 0 0 0;
+		transition: 200ms;
+	}
+	&:has(.stwip--worldSelect:focus) {
+		.dialogue_popup_ok {
+			font-weight: bold;
+			box-shadow: 0 0 10px;
+		}
+		&.stwip--isCopy {
+			.dialogue_popup_ok {
+				font-weight: normal;
+				box-shadow: 0 0 0;
+			}
+			.stwip--copy {
+				font-weight: bold;
+				box-shadow: 0 0 10px;
+			}
+		}
+	}
+}

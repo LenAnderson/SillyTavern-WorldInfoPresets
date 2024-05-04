@@ -428,7 +428,7 @@ const initTransfer = ()=>{
             transferBtn.classList.add('menu_button');
             transferBtn.classList.add('fa-solid');
             transferBtn.classList.add('fa-truck-arrow-right');
-            transferBtn.title = 'Transfer world info entry into another book';
+            transferBtn.title = 'Transfer or copy world info entry into another book';
             tpl.querySelector('.duplicate_entry_button').insertAdjacentElement('beforebegin', transferBtn);
         }
     };
@@ -443,27 +443,60 @@ const initTransfer = ()=>{
             transferBtn.addEventListener('click', async(evt)=>{
                 evt.stopPropagation();
                 let sel;
+                let isCopy = false;
                 const dom = document.createElement('div'); {
+                    dom.classList.add('stwip--transferModal');
                     const title = document.createElement('h3'); {
                         title.textContent = 'Transfer World Info Entry';
                         dom.append(title);
                     }
-                    const subTitle = document.createElement('h3'); {
-                        subTitle.textContent = transferBtn.closest('.world_entry').querySelector('[name="comment"]').value ?? transferBtn.closest('.world_entry').querySelector('[name="key"]').value;
+                    const subTitle = document.createElement('h4'); {
+                        const entryName = transferBtn.closest('.world_entry').querySelector('[name="comment"]').value ?? transferBtn.closest('.world_entry').querySelector('[name="key"]').value;
+                        const bookName = document.querySelector('#world_editor_select').selectedOptions[0].textContent;
+                        subTitle.textContent = `${bookName}: ${entryName}`;
                         dom.append(subTitle);
                     }
                     sel = document.querySelector('#world_editor_select').cloneNode(true); {
+                        sel.classList.add('stwip--worldSelect');
                         sel.value = document.querySelector('#world_editor_select').value;
+                        sel.addEventListener('keyup', (evt)=>{
+                            if (evt.key == 'Shift') {
+                                dlg.dom.classList.remove('stwip--isCopy');
+                                return;
+                            }
+                        });
                         sel.addEventListener('keydown', (evt)=>{
-                            if (!evt.ctrlKey && !evt.shiftKey && !evt.altKey && evt.key == 'Enter') {
+                            if (evt.key == 'Shift') {
+                                dlg.dom.classList.add('stwip--isCopy');
+                                return;
+                            }
+                            if (!evt.ctrlKey && !evt.altKey && evt.key == 'Enter') {
                                 evt.preventDefault();
+                                if (evt.shiftKey) isCopy = true;
                                 dlg.completeAffirmative();
                             }
                         });
                         dom.append(sel);
                     }
+                    const hintP = document.createElement('p'); {
+                        const hint = document.createElement('small'); {
+                            hint.textContent = 'Type to select book. Enter to transfer. Shift+Enter to copy.';
+                            hintP.append(hint);
+                        }
+                        dom.append(hintP);
+                    }
                 }
                 const dlg = new Popup(dom, POPUP_TYPE.CONFIRM, null, { okButton:'Transfer', cancelButton:'Cancel' });
+                const copyBtn = document.createElement('div'); {
+                    copyBtn.classList.add('stwip--copy');
+                    copyBtn.classList.add('menu_button');
+                    copyBtn.textContent = 'Copy';
+                    copyBtn.addEventListener('click', ()=>{
+                        isCopy = true;
+                        dlg.completeAffirmative();
+                    });
+                    dlg.ok.insertAdjacentElement('afterend', copyBtn);
+                }
                 dlg.show();
                 sel.focus();
                 await dlg.promise;
@@ -510,13 +543,13 @@ const initTransfer = ()=>{
                             await prom;
                         }
                         toastr.info('Transferring...');
-                        const maxUid = dummy ?? Math.max(0, ...Object.keys(dstBook.entries).map(Number));
-                        const e = srcBook.entries[uid];
+                        const maxUid = dummy ?? Math.max(-1, ...Object.keys(dstBook.entries).map(Number));
+                        const e = structuredClone(srcBook.entries[uid]);
                         e.uid = maxUid + 1;
                         dstBook.entries[e.uid] = e;
-                        srcBook.entries[uid] = undefined;
+                        if (!isCopy) srcBook.entries[uid] = undefined;
                         await Promise.all([
-                            saveBook(srcName, srcBook),
+                            !isCopy ? saveBook(srcName, srcBook) : Promise.resolve(),
                             saveBook(dstName, dstBook),
                         ]);
                         toastr.info('Almost transferred...');
