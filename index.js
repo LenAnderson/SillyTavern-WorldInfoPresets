@@ -2,6 +2,7 @@ import { callPopup, eventSource, event_types, getRequestHeaders, saveSettingsDeb
 import { extension_settings } from '../../../extensions.js';
 import { POPUP_RESULT, POPUP_TYPE, Popup } from '../../../popup.js';
 import { executeSlashCommands, registerSlashCommand } from '../../../slash-commands.js';
+import { delay } from '../../../utils.js';
 import { importWorldInfo, world_info } from '../../../world-info.js';
 
 
@@ -471,6 +472,15 @@ const initTransfer = ()=>{
                     console.log('TRANSFER TO', sel.value);
                     const srcName = document.querySelector('#world_editor_select').selectedOptions[0].textContent;
                     const dstName = sel.selectedOptions[0].textContent;
+                    let page = document.querySelector('#world_info_pagination .paginationjs-prev[data-num]')?.getAttribute('data-num');
+                    if (page === undefined) {
+                        page = document.querySelector('#world_info_pagination .paginationjs-next[data-num]')?.getAttribute('data-num');
+                        if (page !== undefined) {
+                            page = (Number(page) - 1).toString();
+                        }
+                    } else {
+                        page = (Number(page) + 1).toString();
+                    }
                     if (srcName == dstName) {
                         toastr.warning(`Entry is already in book "${dstName}"`);
                         return;
@@ -480,7 +490,27 @@ const initTransfer = ()=>{
                         loadBook(dstName),
                     ]);
                     if (srcBook && dstBook) {
-                        const maxUid = Math.max(0, ...Object.keys(dstBook.entries).map(Number));
+                        let dummy;
+                        if (Object.keys(dstBook.entries).length == 0) {
+                            toastr.info(`Book "${dstName}" is empty. Creating dummy entry before transfer...`);
+                            const prom = new Promise(async(resolve)=>{
+                                while (document.querySelector('#world_editor_select').selectedOptions[0].textContent != dstName) {
+                                    await delay(100);
+                                }
+                                const saveProm = new Promise(resolve=>eventSource.once(event_types.WORLDINFO_UPDATED, resolve));
+                                while (document.querySelector('#world_popup_entries_list .world_entry').getAttribute('uid') != '0' || document.querySelector('#world_popup_entries_list .world_entry [name="comment"]').value != 'DUMMY') {
+                                    await delay(100);
+                                }
+                                await saveProm;
+                                resolve();
+                            });
+                            dummy = (await executeSlashCommands(`/createentry file="${dstName}" key=DUMMY`)).pipe;
+                            dummy = Number(dummy);
+                            dummy--;
+                            await prom;
+                        }
+                        toastr.info('Transferring...');
+                        const maxUid = dummy ?? Math.max(0, ...Object.keys(dstBook.entries).map(Number));
                         const e = srcBook.entries[uid];
                         e.uid = maxUid + 1;
                         dstBook.entries[e.uid] = e;
@@ -489,8 +519,20 @@ const initTransfer = ()=>{
                             saveBook(srcName, srcBook),
                             saveBook(dstName, dstBook),
                         ]);
+                        toastr.info('Almost transferred...');
                         document.querySelector('#world_editor_select').value = '';
                         document.querySelector('#world_editor_select').dispatchEvent(new Event('change', {  bubbles:true }));
+                        await delay(100);
+                        document.querySelector('#world_editor_select').value = [...document.querySelector('#world_editor_select').children].find(it=>it.textContent == srcName).value;
+                        let saveProm = new Promise(resolve=>eventSource.once(event_types.WORLDINFO_UPDATED, resolve));
+                        document.querySelector('#world_editor_select').dispatchEvent(new Event('change', {  bubbles:true }));
+                        await saveProm;
+                        if (page !== undefined) {
+                            saveProm = new Promise(resolve=>eventSource.once(event_types.WORLDINFO_UPDATED, resolve));
+                            document.querySelector('#world_info_pagination .paginationjs-next').setAttribute('data-num', page.toString());
+                            document.querySelector('#world_info_pagination .paginationjs-next').click();
+                            await saveProm;
+                        }
                         toastr.success('Transferred WI Entry');
                     } else {
                         toastr.error('Something went wrong');
