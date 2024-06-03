@@ -210,7 +210,7 @@ const createPreset = async()=>{
 
 
 const init = ()=>{
-    const container = document.querySelector('#WIMultiSelector');
+    const container = document.querySelector('#wiTopBlock');
     const dom = document.createElement('div'); {
         dom.classList.add('stwip--container');
         const label = document.createElement('div'); {
