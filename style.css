@@ -12,8 +12,8 @@
 	}
 }
 
-.shadow_popup:has(.stwip--transferModal) {
-	.dialogue_popup_ok {
+.shadow_popup:has(.stwip--transferModal), .popup:has(.stwip--transferModal) {
+	.dialogue_popup_ok, .popup-button-ok {
 		&:after {
 			content: 'Transfer';
 			height: 0;
@@ -44,12 +44,12 @@
 		transition: 200ms;
 	}
 	&:has(.stwip--worldSelect:focus) {
-		.dialogue_popup_ok {
+		.dialogue_popup_ok, .popup-button-ok {
 			font-weight: bold;
 			box-shadow: 0 0 10px;
 		}
 		&.stwip--isCopy {
-			.dialogue_popup_ok {
+			.dialogue_popup_ok, .popup-button-ok {
 				font-weight: normal;
 				box-shadow: 0 0 0;
 			}
