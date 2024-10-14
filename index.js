@@ -210,14 +210,9 @@ const createPreset = async()=>{
 
 
 const init = ()=>{
-    const container = document.querySelector('#wiTopBlock');
+    const container = document.querySelector('#WorldInfo > div > h3');
     const dom = document.createElement('div'); {
         dom.classList.add('stwip--container');
-        const label = document.createElement('div'); {
-            label.classList.add('stwip--label');
-            label.textContent = 'Presets: ';
-            dom.append(label);
-        }
         presetSelect = document.createElement('select'); {
             presetSelect.classList.add('stwip--preset');
             const blank = document.createElement('option'); {
@@ -352,7 +347,7 @@ const init = ()=>{
             }
             dom.append(actions);
         }
-        container.children[0].insertAdjacentElement('beforebegin', dom);
+        container.insertAdjacentElement('afterend', dom);
     }
 
     const sel = document.querySelector('#world_editor_select');

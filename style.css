@@ -1,9 +1,11 @@
 .stwip--container {
-	flex-basis: 100%;
+	flex: 1 1 auto;
 	display: flex;
 	flex-direction: row;
 	gap: 1em;
 	align-items: baseline;
+
+	margin-right: 1em;
 
 	> .stwip--actions {
 		display: flex;
